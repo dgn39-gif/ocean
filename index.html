@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스톱워치 & 타이머</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f8fafc;
+            --primary-color: #6366f1;
+            --primary-hover: #4f46e5;
+            --accent-color: #10b981;
+            --danger-color: #ef4444;
+            --gray-color: #64748b;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            width: 350px;
+            text-align: center;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 0.75rem;
+            padding: 4px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--gray-color);
+            padding: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        .display {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            letter-spacing: 2px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timer-inputs {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 2rem;
+        }
+
+        .timer-inputs input {
+            width: 60px;
+            padding: 10px;
+            font-size: 1.5rem;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--gray-color);
+            color: white;
+            border-radius: 0.5rem;
+            outline: none;
+        }
+
+        .timer-inputs input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: white;
+            transition: opacity 0.2s ease;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-start { background-color: var(--accent-color); }
+        .btn-stop { background-color: var(--danger-color); }
+        .btn-reset { background-color: var(--gray-color); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- 탭 메뉴 -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('stopwatch')">스톱워치</button>
+            <button class="tab-btn" onclick="switchTab('timer')">타이머</button>
+        </div>
+
+        <!-- 스톱워치 패널 -->
+        <div id="stopwatch-panel" class="panel active">
+            <div id="stopwatch-display" class="display">00:00:00</div>
+            <div class="buttons">
+                <button id="sw-start-btn" class="btn btn-start" onclick="toggleStopwatch()">시작</button>
+                <button class="btn btn-reset" onclick="resetStopwatch()">초기화</button>
+            </div>
+        </div>
+
+        <!-- 타이머 패널 -->
+        <div id="timer-panel" class="panel">
+            <div id="timer-inputs" class="timer-inputs">
+                <input type="number" id="input-min" value="05" min="0" max="99"> 분
+                <input type="number" id="input-sec" value="00" min="0" max="59"> 초
+            </div>
+            <div id="timer-display" class="display" style="display: none;">05:00</div>
+            <div class="buttons">
+                <button id="timer-start-btn" class="btn btn-start" onclick="toggleTimer()">시작</button>
+                <button class="btn btn-reset" onclick="resetTimer()">초기화</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 탭 전환 기능
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+
+            if (tabName === 'stopwatch') {
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                document.getElementById('stopwatch-panel').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                document.getElementById('timer-panel').classList.add('active');
+            }
+        }
+
+        // --- 스톱워치 로직 ---
+        let swStartTime = 0;
+        let swElapsedTime = 0;
+        let swInterval = null;
+        let swRunning = false;
+
+        function formatTime(ms) {
+            let totalSeconds = Math.floor(ms / 1000);
+            let minutes = Math.floor(totalSeconds / 60);
+            let seconds = totalSeconds % 60;
+            let milliseconds = Math.floor((ms % 1000) / 10);
+
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}:${String(milliseconds).padStart(2, '0')}`;
+        }
+
+        function toggleStopwatch() {
+            const btn = document.getElementById('sw-start-btn');
+            if (!swRunning) {
+                swStartTime = Date.now() - swElapsedTime;
+                swInterval = setInterval(() => {
+                    swElapsedTime = Date.now() - swStartTime;
+                    document.getElementById('stopwatch-display').textContent = formatTime(swElapsedTime);
+                }, 10);
+                btn.textContent = '정지';
+                btn.className = 'btn btn-stop';
+                swRunning = true;
+            } else {
+                clearInterval(swInterval);
+                btn.textContent = '시작';
+                btn.className = 'btn btn-start';
+                swRunning = false;
+            }
+        }
+
+        function resetStopwatch() {
+            clearInterval(swInterval);
+            swRunning = false;
+            swElapsedTime = 0;
+            document.getElementById('stopwatch-display').textContent = '00:00:00';
+            const btn = document.getElementById('sw-start-btn');
+            btn.textContent = '시작';
+            btn.className = 'btn btn-start';
+        }
+
+        // --- 타이머 로직 ---
+        let timerInterval = null;
+        let timerTotalSeconds = 0;
+        let timerRunning = false;
+
+        function toggleTimer() {
+            const startBtn = document.getElementById('timer-start-btn');
+            const inputsDiv = document.getElementById('timer-inputs');
+            const displayDiv = document.getElementById('timer-display');
+
+            if (!timerRunning) {
+                if (timerTotalSeconds === 0) {
+                    const mins = parseInt(document.getElementById('input-min').value) || 0;
+                    const secs = parseInt(document.getElementById('input-sec').value) || 0;
+                    timerTotalSeconds = (mins * 60) + secs;
+
+                    if (timerTotalSeconds <= 0) return alert('시간을 설정해주세요!');
+                }
+
+                inputsDiv.style.display = 'none';
+                displayDiv.style.display = 'block';
+
+                timerInterval = setInterval(() => {
+                    if (timerTotalSeconds > 0) {
+                        timerTotalSeconds--;
+                        let m = Math.floor(timerTotalSeconds / 60);
+                        let s = timerTotalSeconds % 60;
+                        displayDiv.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                    } else {
+                        clearInterval(timerInterval);
+                        alert('타이머 종료!');
+                        resetTimer();
+                    }
+                }, 1000);
+
+                startBtn.textContent = '정지';
+                startBtn.className = 'btn btn-stop';
+                timerRunning = true;
+            } else {
+                clearInterval(timerInterval);
+                startBtn.textContent = '시작';
+                startBtn.className = 'btn btn-start';
+                timerRunning = false;
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            timerRunning = false;
+            timerTotalSeconds = 0;
+            
+            document.getElementById('timer-inputs').style.display = 'flex';
+            document.getElementById('timer-display').style.display = 'none';
+            
+            const startBtn = document.getElementById('timer-start-btn');
+            startBtn.textContent = '시작';
+            startBtn.className = 'btn btn-start';
+        }
+    </script>
+</body>
+</html>
